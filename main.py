@@ -106,6 +106,7 @@ class Scene():
                             self.newPiece.update()
                         elif event.key == p.K_SPACE:
                             place(self.newPiece)
+                            Pieces.empty()
                             pieceSetup(self.screen)
                         elif event.key == p.K_ESCAPE: self.pause = True
                         elif event.key == p.K_TAB: self.example = True
