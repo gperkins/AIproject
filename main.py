@@ -48,16 +48,27 @@ class NewPiece(p.sprite.Sprite):
 
 Pieces = p.sprite.Group()      
     
-def pieceSetup(pieceArr, screen):
+def pieceSetup(screen):
     ypos = 68.6
-    for line in pieceArr:
+    for line in pieceArray:
         xpos = 10
         for piece in line:
-            Pieces.add(Piece(2, xpos, ypos))
+            if (piece != 0):
+                Pieces.add(Piece(piece, xpos, ypos))
             xpos += 91.5
         ypos+=68.6
  
- 
+def place(newPiece):
+    lastline = pieceArray[0]
+    for line in pieceArray:
+        if line[newPiece.pos] != 0:
+            break
+        else:
+            lastline = line
+            
+    lastline[newPiece.pos] = 2
+        
+     
         
 class Scene():
     def __init__(self):
@@ -73,9 +84,9 @@ class Scene():
         
         self.screen = p.display.set_mode(size)
         
-        pieceSetup(pieceArray, self.screen)
+        pieceSetup(self.screen)
         while run:
-            
+            p.time.Clock().tick(60)
             for event in p.event.get():
                 if event.type == p.QUIT:
                     p.display.quit()
@@ -89,8 +100,13 @@ class Scene():
                     if event.type == p.KEYDOWN:
                         if event.key == p.K_RIGHT:
                             self.newPiece.direction= "right"
+                            self.newPiece.update()
                         elif event.key == p.K_LEFT:
                             self.newPiece.direction= "left"
+                            self.newPiece.update()
+                        elif event.key == p.K_SPACE:
+                            place(self.newPiece)
+                            pieceSetup(self.screen)
                         elif event.key == p.K_ESCAPE: self.pause = True
                         elif event.key == p.K_TAB: self.example = True
                 self.draw()
@@ -107,7 +123,7 @@ class Scene():
         p.display.flip()
         
     def update(self):
-        self.newPiece.update()
+        return
         
 #if __name__ == '__main__':
 s = Scene()
