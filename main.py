@@ -69,7 +69,7 @@ def place(col, pieceType):
     else:
         pieceArray[row][col] = pieceType
         firstRowAvailable[col] -=1
-        print firstRowAvailable
+        #print firstRowAvailable
 #     lastline = pieceArray[0]
 #     for line in pieceArray:
 #         if line[newPiece.pos] != 0:
@@ -78,9 +78,16 @@ def place(col, pieceType):
 #             lastline = line
 #             
 #     lastline[newPiece.pos] = 2
-    
+
+def dePlace(col):
+    row = firstRowAvailable[col]
+    if row >= 6: print("Column is already empty!")
+    firstRowAvailable[col] +=1
+    row = firstRowAvailable[col]
+    pieceArray[row][col] = 0   
         
 def getWinner():
+    global winnerFound
     winnerFound = False
     redCount = 0
     blackCount = 0
@@ -137,10 +144,12 @@ def getIncrement(redCount, blackCount, pieceType):
 def getHeuristic(pieceType, col, depth, maxDepth):
     score = 0
     row = firstRowAvailable[col] + 1
-    redWin = False
-    blackWin = False
+    global redWin
+    global blackWin
     
     ####### ROW
+    redWin = False
+    blackWin = False
     redCount =0
     blackCount = 0
     boardRow = pieceArray[row]
@@ -217,8 +226,76 @@ def getHeuristic(pieceType, col, depth, maxDepth):
         score += getIncrement(redCount, blackCount, pieceType)
         r-=1
     return score
-        
 
+column = 0
+        
+def evaluateRed(depth, maxDepth, col, alpha, beta):
+    global column
+    minimum = sys.maxint
+    score = 0
+    if col != -1:
+        score = getHeuristic(1, col, depth, maxDepth)
+        if blackWin:
+            return score
+    if depth == maxDepth: return score
+    
+    for c in range(0,7):
+        if firstRowAvailable[col] != -1:
+            place(c, 2)
+            value = evaluateBlack(depth+1, maxDepth,c,alpha,beta)
+            dePlace(c)
+            if value < minimum:
+                minimum = value
+                if depth == 0: column = c
+            if value < beta: beta = value
+            if alpha >= beta: return beta
+            
+    if minimum == sys.maxint: return 0
+    return minimum
+
+def evaluateBlack(depth, maxDepth, col, alpha, beta):
+    global column
+    maximum = -sys.maxint-1
+    score = 0
+    if col != -1:
+        score = getHeuristic(2, col, depth, maxDepth)
+        if redWin:
+            return score
+    if depth == maxDepth: return score
+    
+    for c in range(0,7):
+        if firstRowAvailable[col] != -1:
+            place(c, 1)
+            value = evaluateRed(depth+1, maxDepth,c,alpha,beta)
+            dePlace(c)
+            if value > maximum:
+                maximum = value
+                if depth == 0: column = c
+            if value > alpha: alpha = value
+            if alpha >= beta: return alpha
+            
+    if maximum == -sys.maxint-1: return 0
+    return maximum
+
+def alphaBeta(maxDepth):
+    global redWin
+    global blackWin
+    redWin = False
+    blackWin = False
+    evaluateBlack(0,1,-1,-sys.maxint, sys.maxint-1)
+    if blackWin: return column
+    redWin = False
+    blackWin = False
+    evaluateRed(0,1,-1,-sys.maxint, sys.maxint-1)
+    if redWin: return column
+    evaluateBlack(0,maxDepth,-1, -sys.maxint,sys.maxint-1)
+    return column
+
+def agentMove():
+    col = alphaBeta(8)
+    place(col, 1)
+    
+    
        
 class Scene():
     def __init__(self):
@@ -226,45 +303,57 @@ class Scene():
         p.init()
         p.font.init()
         
-        self.playerTurn = 1
+        self.playerTurn = True
         
         self.background = p.image.load("res/board640.png")
         self.background = p.transform.scale(self.background, (width,height))
         self.backgroundRect = self.background.get_rect()
         
         self.screen = p.display.set_mode(size)
+        self.newPiece = NewPiece()
         
         pieceSetup(self.screen)
         while run:
-            p.time.Clock().tick(60)
+#             p.time.Clock().tick(60)
+#             for event in p.event.get():
+#                 if event.type == p.QUIT:
+#                     p.display.quit()
+#                     sys.exit()
+            
+            #while self.playerTurn:
+            if not self.playerTurn:
+                agentMove()
+                Pieces.empty()
+                pieceSetup(self.screen)
+                getWinner()
+                self.playerTurn = True
             for event in p.event.get():
                 if event.type == p.QUIT:
                     p.display.quit()
                     sys.exit()
-            self.newPiece = NewPiece()
-            while self.playerTurn:
-                for event in p.event.get():
-                    if event.type == p.QUIT:
-                        p.display.quit()
-                        sys.exit()
-                    if event.type == p.KEYDOWN:
-                        if event.key == p.K_RIGHT:
-                            self.newPiece.direction= "right"
-                            self.newPiece.update()
-                        elif event.key == p.K_LEFT:
-                            self.newPiece.direction= "left"
-                            self.newPiece.update()
-                        elif event.key == p.K_SPACE:
-                            place(self.newPiece.pos, 2)
-                            Pieces.empty()
-                            pieceSetup(self.screen)
-                            getWinner()
-                        elif event.key == p.K_ESCAPE: self.pause = True
-                        elif event.key == p.K_TAB: self.example = True
-                self.draw()
-                self.screen.blit(self.newPiece.image, self.newPiece.rect)
-                p.display.flip()
-                self.update()
+                if event.type == p.KEYDOWN:
+                    if event.key == p.K_RIGHT:
+                        self.newPiece.direction= "right"
+                        self.newPiece.update()
+                    elif event.key == p.K_LEFT:
+                        self.newPiece.direction= "left"
+                        self.newPiece.update()
+                    elif event.key == p.K_SPACE:
+                        place(self.newPiece.pos, 2)
+                        Pieces.empty()
+                        pieceSetup(self.screen)
+                        getWinner()
+                        self.playerTurn = False
+
+                    elif event.key == p.K_ESCAPE:
+                        dePlace(self.newPiece.pos)
+                        Pieces.empty()
+                        pieceSetup(self.screen)
+                    elif event.key == p.K_TAB: self.example = True
+            self.draw()
+            self.screen.blit(self.newPiece.image, self.newPiece.rect)
+            p.display.flip()
+            self.update()
             
             #self.update()
             
