@@ -1,3 +1,7 @@
+# Gregory Perkins
+# CS 472 - Term Project
+# Connect 4 - Minimax, Alpha Beta search
+
 import pygame as p
 import sys
 
@@ -88,7 +92,6 @@ def dePlace(col):
         
 def getWinner():
     global winnerFound
-    winnerFound = False
     redCount = 0
     blackCount = 0
     for row in range(0,6):
@@ -102,7 +105,6 @@ def getWinner():
                     blackCount +=1
             if redCount == 4:
                 winnerFound = True
-                print("win")
                 return 2
             elif blackCount == 4:
                 winnerFound = True
@@ -325,7 +327,6 @@ class Scene():
                 agentMove()
                 Pieces.empty()
                 pieceSetup(self.screen)
-                getWinner()
                 self.playerTurn = True
             for event in p.event.get():
                 if event.type == p.QUIT:
@@ -364,7 +365,14 @@ class Scene():
         p.display.flip()
         
     def update(self):
-        return
+        val = getWinner()
+        if winnerFound:
+            if val == 2:
+                print("Red Wins!")
+            elif val == 1:
+                print("Black Wins!")
+            sys.exit()
+            
         
 #if __name__ == '__main__':
 s = Scene()
