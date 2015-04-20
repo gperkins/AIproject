@@ -4,6 +4,9 @@ import sys
 
 size = (width,height) = 640,480
 run = 1
+winnerFound = False
+blackWin = False
+redWin = False
 
 pieceArray = [[0,0,0,0,0,0,0],
              [0,0,0,0,0,0,0],
@@ -11,6 +14,8 @@ pieceArray = [[0,0,0,0,0,0,0],
              [0,0,0,0,0,0,0],
              [0,0,0,0,0,0,0],
              [0,0,0,0,0,0,0]]
+
+firstRowAvailable = [5,5,5,5,5,5,5]
 
 class Piece(p.sprite.Sprite):
     def __init__(self, pType, x, y):
@@ -58,18 +63,163 @@ def pieceSetup(screen):
             xpos += 91.5
         ypos+=68.6
  
-def place(newPiece):
-    lastline = pieceArray[0]
-    for line in pieceArray:
-        if line[newPiece.pos] != 0:
-            break
-        else:
-            lastline = line
-            
-    lastline[newPiece.pos] = 2
+def place(col, pieceType):
+    row = firstRowAvailable[col]
+    if row<0: print("Column is full!")
+    else:
+        pieceArray[row][col] = pieceType
+        firstRowAvailable[col] -=1
+        print firstRowAvailable
+#     lastline = pieceArray[0]
+#     for line in pieceArray:
+#         if line[newPiece.pos] != 0:
+#             break
+#         else:
+#             lastline = line
+#             
+#     lastline[newPiece.pos] = 2
+    
         
-     
+def getWinner():
+    winnerFound = False
+    redCount = 0
+    blackCount = 0
+    for row in range(0,6):
+        for col in range(3,7):
+            redCount = 0
+            blackCount = 0
+            for val in range(0,4):
+                if pieceArray[row][col-val] == 2:
+                    redCount +=1
+                elif pieceArray[row][col-val] == 1:
+                    blackCount +=1
+            if redCount == 4:
+                winnerFound = True
+                print("win")
+                return 2
+            elif blackCount == 4:
+                winnerFound = True
+                return 1   
+    for col in range(0,7):
+        for row in range(3,6):
+            redCount = 0
+            blackCount = 0
+            for val in range(0,4):
+                if pieceArray[row-val][col] == 2:
+                    redCount +=1
+                elif pieceArray[row-val][col] == 1:
+                    blackCount +=1
+            if redCount == 4:
+                winnerFound = True
+                print("win")
+                return 2
+            elif blackCount == 4:
+                winnerFound = True
+                return 1  
+
+increment = [0,1,4,32,128,512]
+def getIncrement(redCount, blackCount, pieceType):
+    if redCount == blackCount:
+        if pieceType == 2:
+            return -1
+        return 1
+    elif redCount < blackCount:
+        if pieceType == 2:
+            return increment[blackCount] - increment[redCount]
+        return increment[blackCount+1] - increment[redCount]
+    else:
+        if pieceType == 2:
+            return -increment[redCount+1] + increment[blackCount]
+        return -increment[redCount] + increment[blackCount]
+    
+    
+    
+def getHeuristic(pieceType, col, depth, maxDepth):
+    score = 0
+    row = firstRowAvailable[col] + 1
+    redWin = False
+    blackWin = False
+    
+    ####### ROW
+    redCount =0
+    blackCount = 0
+    boardRow = pieceArray[row]
+    cStart = col-3
+    colStart = cStart if cStart>=0 else 0
+    colEnd = 4 - (colStart - cStart)
+    for c in range(colStart, colEnd):
+        redCount=0
+        blackCount=0
+        for val in range(0,4):
+            if boardRow[c+val] == 2: redCount +=1
+            elif boardRow[c+val]== 1: blackCount +=1
+        if redCount == 4:
+            redWin = True
+            if depth <=2: return -sys.maxint - 1
+        elif blackCount ==4:
+            blackWin = True
+            if depth <= 2: return sys.maxint -1
+        score += getIncrement(redCount, blackCount, pieceType)
         
+    ######## COLUMN
+    redCount= 0
+    blackCount = 0
+    rowEnd = min(6, row+4)
+    for r in range(row, rowEnd):
+        if pieceArray[r][col] == 2: redCount += 1
+        elif pieceArray[r][col] == 1: blackCount += 1
+    if redCount == 4:
+        redWin = True
+        if depth <=2: return -sys.maxint - 1
+    elif blackCount ==4:
+        blackWin = True
+        if depth <= 2: return sys.maxint -1    
+    score += getIncrement(redCount, blackCount, pieceType)
+    
+    ######## major diagonal
+    minValue = min(row,col)
+    rowStart = row - minValue
+    colStart = col-minValue
+    c = colStart
+    for r in range(rowStart, 3):
+        if c > 3: break
+        redCount = 0
+        blackCount = 0
+        for val in range(0,4):
+            if pieceArray[r+val][c+val] == 2: redCount +=1
+            elif pieceArray[r+val][c+val] == 1: blackCount +=1
+        if redCount == 4:
+            redWin = True
+            if depth <=2: return -sys.maxint - 1
+        elif blackCount ==4:
+            blackWin = True
+            if depth <= 2: return sys.maxint -1    
+        score += getIncrement(redCount, blackCount, pieceType)
+        c+=1
+    
+    ####### minor diagonal
+    minValue = min(5-row, col)
+    rowStart = row+minValue
+    colStart = col - minValue
+    for c in range(colStart, 4):
+        if r < 3: break
+        redCount = 0
+        blackCount = 0
+        for val in range(0,4):
+            if pieceArray[r-val][c+val] == 2: redCount +=1
+            elif pieceArray[r-val][c+val] == 1: blackCount +=1
+        if redCount == 4:
+            redWin = True
+            if depth <=2: return -sys.maxint - 1
+        elif blackCount ==4:
+            blackWin = True
+            if depth <= 2: return sys.maxint -1    
+        score += getIncrement(redCount, blackCount, pieceType)
+        r-=1
+    return score
+        
+
+       
 class Scene():
     def __init__(self):
     
@@ -105,9 +255,10 @@ class Scene():
                             self.newPiece.direction= "left"
                             self.newPiece.update()
                         elif event.key == p.K_SPACE:
-                            place(self.newPiece)
+                            place(self.newPiece.pos, 2)
                             Pieces.empty()
                             pieceSetup(self.screen)
+                            getWinner()
                         elif event.key == p.K_ESCAPE: self.pause = True
                         elif event.key == p.K_TAB: self.example = True
                 self.draw()
