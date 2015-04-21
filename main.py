@@ -4,7 +4,7 @@
 
 import pygame as p
 import sys
-
+import time
 
 size = (width,height) = 640,480
 run = 1
@@ -68,11 +68,13 @@ def pieceSetup(screen):
         ypos+=68.6
  
 def place(col, pieceType):
+    global firstRowAvailable
     row = firstRowAvailable[col]
-    if row<0: print("Column is full!")
+    if row<0: return False
     else:
         pieceArray[row][col] = pieceType
         firstRowAvailable[col] -=1
+        return True
         #print firstRowAvailable
 #     lastline = pieceArray[0]
 #     for line in pieceArray:
@@ -84,11 +86,13 @@ def place(col, pieceType):
 #     lastline[newPiece.pos] = 2
 
 def dePlace(col):
+    global firstRowAvailable
     row = firstRowAvailable[col]
     if row >= 6: print("Column is already empty!")
-    firstRowAvailable[col] +=1
-    row = firstRowAvailable[col]
-    pieceArray[row][col] = 0   
+    else:
+        firstRowAvailable[col] +=1
+        row = firstRowAvailable[col]
+        pieceArray[row][col] = 0   
         
 def getWinner():
     global winnerFound
@@ -120,12 +124,41 @@ def getWinner():
                     blackCount +=1
             if redCount == 4:
                 winnerFound = True
-                print("win")
                 return 2
             elif blackCount == 4:
                 winnerFound = True
                 return 1  
 
+    #major diag
+    for row in range(2, -1, -1):
+        for col in range(3, -1, -1):
+            redCount = 0
+            blackCount = 0
+            for val in range(3, -1, -1):
+                if pieceArray[row+val][col+val] == 2: redCount+=1
+                elif pieceArray[row+val][col+val] == 1:blackCount +=1
+            if redCount == 4:
+                winnerFound = True
+                return 2
+            elif blackCount == 4:
+                winnerFound = True
+                return 1  
+                
+    #minor diag
+    for row in range(2, -1, -1):
+        for col in range(3, -1, -1):
+            redCount = 0
+            blackCount = 0
+            for val in range(3, -1, -1):
+                if pieceArray[row+val][col-val+3] == 2: redCount+=1
+                elif pieceArray[row+val][col-val+3] == 1:blackCount +=1
+            if redCount == 4:
+                winnerFound = True
+                return 2
+            elif blackCount == 4:
+                winnerFound = True
+                return 1 
+                
 increment = [0,1,4,32,128,512]
 def getIncrement(redCount, blackCount, pieceType):
     if redCount == blackCount:
@@ -291,11 +324,18 @@ def alphaBeta(maxDepth):
     evaluateRed(0,1,-1,-sys.maxint, sys.maxint-1)
     if redWin: return column
     evaluateBlack(0,maxDepth,-1, -sys.maxint,sys.maxint-1)
-    return column
+    return column 
 
-def agentMove():
-    col = alphaBeta(8)
-    place(col, 1)
+def agentMove(depth):
+    start = time.time()
+    col = alphaBeta(depth)
+    if firstRowAvailable[col] > 0:
+        place(col, 1)
+    else:
+        agentMove(depth-1)
+    end = time.time()
+    print "Move Time: %f seconds" % (end-start)
+    
     
     
        
@@ -324,7 +364,7 @@ class Scene():
             
             #while self.playerTurn:
             if not self.playerTurn:
-                agentMove()
+                agentMove(6)
                 Pieces.empty()
                 pieceSetup(self.screen)
                 self.playerTurn = True
